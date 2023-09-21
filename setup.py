@@ -15,7 +15,7 @@ setup(
     url="https://github.com/Thibauth/python-pushover",
     author="Thibaut Horel",
     author_email="thibaut.horel+pushover@gmail.com",
-    py_modules=["pushover", "cli"],
+    py_modules=["pushover"],
     entry_points={"console_scripts": ["pushover = cli:main"]},
     install_requires=["requests>=1.0"],
     license="GNU GPLv3",
