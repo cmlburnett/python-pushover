@@ -238,23 +238,46 @@ class Pushover:
         return Request("post", GLANCE_URL, payload)
 
 class Client:
-	def __init__(self, user_key=None, api_token=None):
-		if user_key is None or api_token is None:
-			self.params = self.read_config(CONFIG_PATH)
+	def __init__(self, user, api):
+		self.params = {
+			'user_key': None,
+			'api_token': None,
+		}
+
+		params = self.read_config(CONFIG_PATH)
+		if user in params['users']:
+			self.params['user_key'] = params['users'][user]['user_key']
 		else:
-			self.params = {"user_key": user_key, "api_token": api_token}
+			self.params['user_key'] = user
+
+		if api in params['apis']:
+			self.params['api_token'] = params['apis'][api]
+		else:
+			self.params['api_token'] = api
 
 	@staticmethod
 	def read_config(config_path):
-		config_path = os.path.expanduser(config_path)
+		try:
+			config_path = os.path.expanduser(config_path)
+			config = configparser.RawConfigParser()
+			params = {"users": {}, "apis": {}}
+			files = config.read(config_path)
+			if not files:
+				return params
 
-		config = configparser.RawConfigParser()
-		files = config.read(config_path)
-		if not files:
-			return {}
-		params = {}
-		params["user_key"] = config.get("Default", "user_key")
-		params["api_token"] = config.get("Default", "api_token")
+			for apiname in config.options('main'):
+				params['apis'][apiname] = config.get('main', apiname)
+
+			for name in config.sections():
+				if name == "main": continue
+
+				user = {}
+				user["user_key"] = config.get(name, "user_key", fallback=None)
+				user["device"] = config.get(name, "device", fallback=None)
+				params["users"][name] = user
+		except Exception as e:
+			print(e)
+			pass
 
 		return params
 
