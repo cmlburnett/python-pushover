@@ -87,7 +87,7 @@ class MessageRequest(Request):
         if payload.get("priority", 0) == 2:
             self.url = RECEIPT_URL + self.answer["receipt"]
             self.status["done"] = False
-            for param, when in MessageRequest.params.iteritems():
+            for param, when in MessageRequest.params.items():
                 self.status[param] = False
                 self.status[when] = 0
 
@@ -266,24 +266,29 @@ if __name__ == '__main__':
 	from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 	def read_config(config_path):
-		config_path = os.path.expanduser(config_path)
-		config = configparser.RawConfigParser()
-		params = {"users": {}}
-		files = config.read(config_path)
-		if not files:
-			return params
-		params["token"] = config.get("main", "token")
-		for name in config.sections():
-			if name != "main":
-				user = {}
-				user["user_key"] = config.get(name, "user_key")
-				try:
-					user["device"] = config.get(name, "device")
-				except NoOptionError:
-					user["device"] = None
-				params["users"][name] = user
-		return params
+		try:
+			config_path = os.path.expanduser(config_path)
+			config = configparser.RawConfigParser()
+			params = {"users": {}, "apis": {}}
+			files = config.read(config_path)
+			if not files:
+				return params
 
+			for apiname in config.options('main'):
+				params['apis'][apiname] = config.get('main', apiname)
+
+			for name in config.sections():
+				if name == "main": continue
+
+				user = {}
+				user["user_key"] = config.get(name, "user_key", fallback=None)
+				user["device"] = config.get(name, "device", fallback=None)
+				params["users"][name] = user
+		except Exception as e:
+			print(e)
+			pass
+
+		return params
 
 	def main():
 		parser = ArgumentParser(
@@ -292,18 +297,17 @@ if __name__ == '__main__':
 			epilog="""
 	For more details and bug reports, see: https://github.com/Thibauth/python-pushover""",
 		)
-		parser.add_argument("--token", help="API token")
+		parser.add_argument("--api", help="API name in pushoverrc or an API token")
 		parser.add_argument(
 			"--user",
 			"-u",
-			help="User key or section name in the configuration",
+			help="User name in pshoverrc or a user key",
 			required=True,
 		)
 		parser.add_argument(
 			"-c",
 			"--config",
-			help="configuration file\
-							(default: ~/.pushoverrc)",
+			help="configuration file (default: ~/.pushoverrc)",
 			default="~/.pushoverrc",
 		)
 		parser.add_argument("message", help="message to send")
@@ -318,12 +322,14 @@ if __name__ == '__main__':
 			"-r",
 			help="resend interval in seconds (required for priority 2)",
 			type=int,
+			default=60
 		)
 		parser.add_argument(
 			"--expire",
 			"-e",
 			help="expiration time in seconds (required for priority 2)",
 			type=int,
+			default=600
 		)
 		parser.add_argument(
 			"--version",
@@ -348,7 +354,11 @@ if __name__ == '__main__':
 		else:
 			user_key = args.user
 			device = None
-		token = args.token or params["token"]
+
+		if args.api in params['apis']:
+			token = params['apis'][args.api]
+		else:
+			token = args.api
 
 		Pushover(token).message(
 			user_key,
