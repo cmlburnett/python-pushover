@@ -245,7 +245,14 @@ class Client:
 		}
 
 		params = self.read_config(CONFIG_PATH)
-		if user in params['users']:
+		if user is None:
+			if len(params['users']):
+				first_user = list(params['users'].keys())[0]
+
+				self.params['user_key'] = params['users'][first_user]['user_key']
+			else:
+				raise ValueError("User name is None but no users exist in ~/.pushoverrc, cannot assume the first user")
+		elif user in params['users']:
 			self.params['user_key'] = params['users'][user]['user_key']
 		else:
 			self.params['user_key'] = user
